@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<title>Lab PSU - Charts</title>
+<link rel="stylesheet" href="./style.css">
+<style>
+html, body { width: 100%; height: 100%; }
+body { display: flex; flex-direction: column; padding: 1em; gap: 0; }
+.chart-container { flex: 1 1 auto; background: var(--b5); border-radius: 0.5em; padding: 1em 1.5em; box-shadow: var(--s1); box-sizing: border-box; display: flex; align-items: stretch; justify-content: stretch; min-height: 0; }
+canvas { width: 100% !important; height: 100% !important; display: block; border-radius: 0.25em; background: var(--b5); }
+h1 { display: flex; align-items: center; justify-content: space-between; }
+#debugToggle { margin-left: 1em; }
+</style>
+</head>
+<body>
+<h1>Lab PSU - Charts <label><input type="checkbox" id="debugToggle"> Debug</label></h1>
+<div class="chart-container"><canvas id="chartCombined"></canvas></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="mock-ws.js"></script>
+<script>
+const maxPoints = 100;const dataArray = [];const startTime = Date.now();const pageName = "charts";let globals = {};let reconnectAttempts = 0;const maxReconnectDelay = 30000;
+function wsOnMessage(event) {try {
+const data = JSON.parse(event.data);
+if ('HUE' in data) {globals['HUE'] = parseFloat(data['HUE']);document.documentElement.style.setProperty('--h', globals['HUE']);}
+const now = Date.now() - startTime;
+const jitter = (arr, maxDiff) => {if (!arr.length) return 0;let min = Infinity, max = -Infinity;for (const v of arr)if (v != null && !isNaN(v) && isFinite(v)) {if (v < min) min = v;if (v > max) max = v;}if (max === -Infinity || min === Infinity) return 0;
+if (max - min < maxDiff * 0.05)return arr[arr.length - 1] + (Math.random() - 0.5) * maxDiff * 0.02;return arr[arr.length - 1];};
+const newData = {time: now,V: +data.V || 0,I: +data.I || 0,Q: +data.Q || 0,TEMP: +data.TEMP || 0,VSET: +data.VSET || 0,IL: +data.IL || 0,IF: +data.IF || 0,
+D0: +data.debug?.Dbg0 || 0,D1: +data.debug?.Dbg1 || 0,D2: +data.debug?.Dbg2 || 0,D3: +data.debug?.Dbg3 || 0,D4: +data.debug?.Dbg4 || 0,D5: +data.debug?.Dbg5 || 0};
+dataArray.push(newData);if (dataArray.length > maxPoints) dataArray.shift();
+combinedChart.data.labels = dataArray.map(d=>d.time);
+combinedChart.data.datasets[0].data = dataArray.map(d=>d.V);
+combinedChart.data.datasets[1].data = dataArray.map(d=>d.I);
+combinedChart.data.datasets[2].data = dataArray.map(d=>d.Q);
+combinedChart.data.datasets[3].data = dataArray.map(d=>d.TEMP);
+combinedChart.data.datasets[4].data = dataArray.map(d=>d.VSET);
+combinedChart.data.datasets[5].data = dataArray.map(d=>d.IL);
+combinedChart.data.datasets[6].data = dataArray.map(d=>d.IF);
+combinedChart.data.datasets[7].data = dataArray.map(d=>d.D0);
+combinedChart.data.datasets[8].data = dataArray.map(d=>d.D1);
+combinedChart.data.datasets[9].data = dataArray.map(d=>d.D2);
+combinedChart.data.datasets[10].data = dataArray.map(d=>d.D3);
+combinedChart.data.datasets[11].data = dataArray.map(d=>d.D4);
+combinedChart.data.datasets[12].data = dataArray.map(d=>d.D5);
+if (data.debug && data.debug.enabled) {
+  document.getElementById("debugToggle").checked = true;for (let i=7;i<=12;i++) combinedChart.options.scales[`yDbg${i-7}`].display = true;} else {document.getElementById("debugToggle").checked = false;for (let i=7;i<=12;i++) combinedChart.options.scales[`yDbg${i-7}`].display = false;}
+combinedChart.resize();
+updateScales();
+combinedChart.update('none');
+} catch(e) {}}
+function setupWS() {const wsNew = new WebSocket("ws://" + location.hostname + "/ws");wsNew.onopen = () => {reconnectAttempts = 0;if (wsNew.readyState === WebSocket.OPEN) {wsNew.send(JSON.stringify({ page: pageName, action: "OPEN" }));}
+  setInterval(() => {if (wsNew.readyState === WebSocket.OPEN) {wsNew.send(JSON.stringify({ page: pageName, action: "OPEN" }));}}, 5000);};
+  wsNew.onmessage = wsOnMessage;wsNew.onclose = () => {reconnectAttempts++;const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), maxReconnectDelay);setTimeout(setupWS, delay);};wsNew.onerror = e => wsNew.close();return wsNew;}
+const ws = setupWS();
+function calcSmartRange(arr, step, minMax) {let max = -Infinity, min = Infinity;for (const v of arr) {if (v != null && !isNaN(v) && isFinite(v)) {if (v < min) min = v;if (v > max) max = v;}}
+  if (max === -Infinity || min === Infinity) return [0, minMax];
+  let range = max - min;
+  let maxWithPadding = max + range * 0.15;
+  let minWithPadding = min - range * 0.15;
+  if (maxWithPadding < minMax) maxWithPadding = minMax;
+  maxWithPadding = Math.ceil(maxWithPadding / step) * step;
+  minWithPadding = Math.floor(minWithPadding / step) * step;
+  return [minWithPadding, maxWithPadding];}
+const unitsPlugin = {id: "unitsPlugin",afterDraw(chart) {const ctx = chart.ctx;ctx.save();ctx.font = "12px 'Roboto Mono'";ctx.textAlign = "center";ctx.textBaseline = "top";const scales = [
+  { id: "yVoltage", unit: "V", color: "#4CAF50" },
+  { id: "yCurrent", unit: "A", color: "#FFC107" },
+  { id: "yPower", unit: "W", color: "#03A9F4" },
+  { id: "yTemp", unit: "°C", color: "#FF69B4" }];
+  scales.forEach(scale => {const yScale = chart.scales[scale.id];if (yScale && yScale.options.display) {const x = yScale.left + yScale.width / 2;const y = yScale.bottom + 10;ctx.fillStyle = scale.color;ctx.fillText(scale.unit, x, y);}});ctx.restore();}};
+Chart.register(unitsPlugin);
+const ctx = document.getElementById("chartCombined").getContext("2d");const combinedChart = new Chart(ctx, {type: "line",data: {labels: [],datasets: [
+  { label: "Vmeas", data: [], borderColor: "#4CAF50", yAxisID: "yVoltage", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, order: 1, hidden: false },
+  { label: "Imeas", data: [], borderColor: "#FFC107", yAxisID: "yCurrent", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, order: 1, hidden: false },
+  { label: "Pmeas", data: [], borderColor: "#03A9F4", yAxisID: "yPower", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, order: 1, hidden: true },
+  { label: "NTC temp", data: [], borderColor: "#FF69B4", yAxisID: "yTemp", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, order: 1, hidden: true },
+  { label: "Vset", data: [], borderColor: "#8BC34A", yAxisID: "yVoltage", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 1, order: 2, hidden: true },
+  { label: "Iset", data: [], borderColor: "#FF9800", yAxisID: "yCurrent", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 1, order: 2, hidden: true },
+  { label: "Icut", data: [], borderColor: "#FF0000", yAxisID: "yCurrent", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 1, order: 2, hidden: true },
+  { label: "Dbg0", data: [], borderColor: "#9C27B0", yAxisID: "yDbg0", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, order: 1, hidden: true },
+  { label: "Dbg1", data: [], borderColor: "#3F51B5", yAxisID: "yDbg1", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, order: 1, hidden: true },
+  { label: "Dbg2", data: [], borderColor: "#E91E63", yAxisID: "yDbg2", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, order: 1, hidden: true },
+  { label: "Dbg3", data: [], borderColor: "#FF9800", yAxisID: "yDbg3", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, order: 1, hidden: true },
+  { label: "Dbg4", data: [], borderColor: "#00BCD4", yAxisID: "yDbg4", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, order: 1, hidden: true },
+  { label: "Dbg5", data: [], borderColor: "#F06292", yAxisID: "yDbg5", fill: false, tension: 0.2, pointRadius: 0, borderWidth: 2, order: 1, hidden: true }]},
+  options: {responsive: true,maintainAspectRatio: false,animation: false,interaction: { mode: "nearest", intersect: false },layout: {padding: {bottom: 40}},plugins: {legend: {
+  display: true,position: "top",labels: {
+    usePointStyle: true,
+    pointStyle: 'circle',
+    boxWidth: 8,
+    boxHeight: 8,
+    font: { size: 12, family: "'Roboto Mono', monospace" },
+    filter: item => document.getElementById('debugToggle').checked || item.datasetIndex < 7,
+    generateLabels(chart) {
+      return chart.data.datasets.map((dataset, i) => ({
+        text: dataset.label,
+        fillStyle: chart.isDatasetVisible(i) ? dataset.borderColor : 'transparent',
+        strokeStyle: dataset.borderColor,
+        pointStyle: 'circle',
+        lineWidth: 2,
+        boxWidth: 8,
+        boxHeight: 8,
+        datasetIndex: i,
+        fontColor: chart.isDatasetVisible(i) ? dataset.borderColor : '#888'
+      }));
+    },
+    onClick(e, item, legend) {const i = item.datasetIndex;legend.chart.setDatasetVisibility(i, !legend.chart.isDatasetVisible(i));legend.chart.update();}}},
+  tooltip: {callbacks: {title: () => '',label: context => `${context.dataset.label}: ${context.raw}`}}},
+  scales: {
+  x: { ticks: { display: false, maxTicksLimit: 10 }, grid: { color: "#444", lineWidth: 1, drawTicks: false } },
+  yVoltage: { position: "left", beginAtZero: true, ticks: { color: "#4CAF50" }, grid: { color: "#4CAF5040" } },
+  yCurrent: { position: "left", min: 0, beginAtZero: true, ticks: { color: "#FFC107" }, grid: { drawOnChartArea: false } },
+  yPower: { position: "right", beginAtZero: true, ticks: { color: "#03A9F4" }, grid: { drawOnChartArea: false } },
+  yTemp: { position: "right", beginAtZero: true, ticks: { color: "#FF69B4" }, grid: { drawOnChartArea: false } },
+  yDbg0: { position: "right", display: false, beginAtZero: true, ticks: { color: "#9C27B0" } },
+  yDbg1: { position: "right", display: false, beginAtZero: true, ticks: { color: "#3F51B5" } },
+  yDbg2: { position: "right", display: false, beginAtZero: true, ticks: { color: "#E91E63" } },
+  yDbg3: { position: "right", display: false, beginAtZero: true, ticks: { color: "#FF9800" } },
+  yDbg4: { position: "right", display: false, beginAtZero: true, ticks: { color: "#00BCD4" } },
+  yDbg5: { position: "right", display: false, beginAtZero: true, ticks: { color: "#F06292" } }}}});
+function updateScales() {
+  const V = combinedChart.data.datasets[0].data;
+  const I = combinedChart.data.datasets[1].data;
+  const P = combinedChart.data.datasets[2].data;
+  const T = combinedChart.data.datasets[3].data;
+  for (let i = 0; i <= 5; i++) {combinedChart.options.scales[`yDbg${i}`].max = calcSmartRange(combinedChart.data.datasets[7 + i].data, 0, 0)[1];}
+  combinedChart.options.scales.yVoltage.max = calcSmartRange(V, 1, 1)[1];
+  combinedChart.options.scales.yCurrent.max = calcSmartRange(I, 0.05, 0.05)[1];
+  combinedChart.options.scales.yPower.max = calcSmartRange(P, 0.05, 0.05)[1];
+  combinedChart.options.scales.yTemp.max = calcSmartRange(T, 5, 10)[1];}
+document.getElementById("debugToggle").addEventListener("change", e => {const show = e.target.checked;for (let i = 7; i <= 12; i++) {combinedChart.setDatasetVisibility(i, show);combinedChart.options.scales[`yDbg${i - 7}`].display = show;}
+  ws.send(JSON.stringify({ action: show ? "DEBUG_ON" : "DEBUG_OFF" }));combinedChart.update();});
+window.addEventListener("resize", () => combinedChart.resize());
+</script>
+
+</body>
+</html>

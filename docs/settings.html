@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab PSU Settings</title>
+<link rel="stylesheet" href="./style.css">
+<style>
+:root { transition: all 0.3s ease; }
+body { max-width: 40em; min-width: 40em}
+.section.button-section { box-shadow: none; display: flex; gap: var(--g2); padding: 0;}
+.nav-btn { background: var(--b6); border: none; color: var(--c1); padding: .5em; border-radius: .375em; font-size: 1.1em; height: 2.2em; cursor: pointer; transition: background-color .3s ease, color .3s ease; flex: 1; min-width: 0; user-select: none; display: flex; justify-content: center; align-items: center; box-shadow: var(--s1); }
+.nav-btn:hover { background: var(--b1); color: var(--b4); }
+.nav-btn:active { background: var(--b2); color: var(--n1); }
+.nav-btn.active { background: var(--b3); color: var(--b4); box-shadow: 0 0 15px var(--c1); }
+#statusSection.status-error { --color: var(--e1); --shadow: var(--s2); animation: shadow-blink 1.2s infinite; }
+#statusSection.status-normal { --color: var(--c1); --shadow: var(--s1); }
+#statusList.status-error { color: var(--e1); animation: none; }
+#statusList.status-normal { color: var(--c1); }
+#statusList div.error-active { color: var(--e1); }
+#statusList div.error-inactive { color: var(--c4); }
+#statusList div.no-status { color: var(--c4); }
+.field-group { display: grid; grid-template-columns: 10em 1fr 8em; gap: .5em .8em; align-items: center; margin: .6em 0; }
+.field-group.password-group { grid-template-columns: 7em 1fr 14em; gap: .8em .5em; }
+.field { display: contents; }
+.field label { text-align: right; color: var(--c2); font-size: 1.1em; user-select: none; }
+.field .global { text-align: left; font-size: 1em; color: var(--c4); font-variant-numeric: tabular-nums; }
+.field input[type="text"], .field input[type="number"] { justify-self: center; width: 4em; height: 1.8em; font-size: 1em; text-align: center; border-radius: .375em; background: var(--b6); color: var(--c4); border: none; box-shadow: var(--s1); }
+.field input[type="number"]::-webkit-outer-spin-button, .field input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.field input[type="number"] { -moz-appearance: textfield; }
+.field input:focus { outline: none; background: var(--b1); color: var(--b4); }
+.field input.input-network { width: 12em; height: 2em; font-size: 1.1em; padding: 0 .2em; }
+.field input[type="checkbox"] { justify-self: center; width: 1.2em; height: 1.2em; accent-color: var(--c1); margin: 0; align-self: center; }
+#onlineMode { justify-self: start; }
+.password-field { display: flex; justify-content: flex-end; align-items: center; }
+.password-field input { flex: 1 1 auto; width: 100%; }
+.hidden { display: none; }
+#statusList { max-height: 150px; overflow-y: auto; font-weight: bold; font-size: 1em; }
+#statusSection { display: none; }
+#statusSection.visible { display: block; }
+#hueSlider { width: 8em; height: 0.8em; border-radius: .375em; background: linear-gradient(to right, 
+  hsl(0, 80%, 50%), hsl(30, 80%, 50%), hsl(60, 80%, 50%), hsl(90, 80%, 50%), hsl(120, 80%, 50%), hsl(150, 80%, 50%), hsl(180, 80%, 50%), hsl(210, 80%, 50%), 
+  hsl(240, 80%, 50%), hsl(270, 80%, 50%), hsl(300, 80%, 50%), hsl(330, 80%, 50%), hsl(360, 80%, 50%)); justify-self: center; -webkit-appearance: none; appearance: none;}
+#hueSlider::-webkit-slider-thumb { -webkit-appearance: none; width: 1.4em; height: 1.4em; border-radius: 50%; background: hsl(var(--h, 85), 80%, 50%); border: 2px solid var(--b4); 
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3); cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+#hueSlider::-webkit-slider-thumb:hover { transform: scale(1.2); box-shadow: 0 0 12px rgba(0, 0, 0, 0.4); }
+#hueSlider::-moz-range-thumb { width: 1.4em; height: 1.4em; border-radius: 50%; background: hsl(var(--h, 85), 80%, 50%); border: 2px solid var(--b4); 
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3); cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+#hueSlider::-moz-range-thumb:hover { transform: scale(1.2); box-shadow: 0 0 12px rgba(0, 0, 0, 0.4); }
+.collapsible-header { cursor: pointer; display: flex; align-items: center; justify-content: space-between; margin-right: 1em;}
+.collapsible-header .arrow { display: inline-block; font-size: 0.8em; transition: transform 0.3s ease; margin-left: 0.3em; }
+.collapsible-header.collapsed .arrow { transform: rotate(-90deg); }
+.collapsible-section { transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
+.collapsible-section.collapsed { max-height: 0; opacity: 0; }
+</style>
+</head>
+<body>
+<h1>Lab PSU Config</h1>
+<div class="section" id="userSettings"><h2>User Settings</h2>
+<div class="field-group password-group">
+<div class="field"><label>SSID:</label><span class="global" id="global_WiFiSSID"></span><input type="text" id="draft_WiFiSSID" class="input-network"></div>
+<div class="field"><label>Password:</label><span class="global" id="global_WiFiPass"></span><input type="text" id="draft_WiFiPass" class="input-network"></div>
+<div class="field"><label>Theme Hue:</label><span class="global" id="global_HUE"></span><input type="range" id="hueSlider" min="0" max="360" step="1"><input type="number" id="draft_HUE" class="hidden" step="1"></div>
+</div>
+</div>
+<div class="section button-section">
+<button id="toggleExpert" class="nav-btn">Show Expert</button>
+<button id="btnApply" class="nav-btn">Apply</button>
+<button id="toggleErrors" class="nav-btn">Show Errors</button>
+</div>
+<div class="section status-error hidden" id="statusSection"><h1>Status</h1>
+<div id="statusList"></div>
+</div>
+<div id="expertSettings" class="section hidden">
+<h2>Expert Settings</h2><hr>
+<label><input type="checkbox" id="onlineMode"> Online Mode (Auto Apply)</label><hr>
+<h1 class="collapsible-header" data-section="wifi">WiFi Settings <span class="arrow">▼</span></h1>
+<div class="collapsible-section" id="wifi">
+<div class="field-group">
+<div class="field"><label>WiFi Enabled:</label><span class="global" id="global_WiFiEnabled"></span><input type="checkbox" id="draft_WiFiEnabled"></div>
+<div class="field"><label>OTA Enabled:</label><span class="global" id="global_OTAEnabled"></span><input type="checkbox" id="draft_OTAEnabled"></div>
+</div>
+</div><hr>
+<h1 class="collapsible-header" data-section="voltage-pid">Voltage PID <span class="arrow">▼</span></h1>
+<div class="collapsible-section" id="voltage-pid">
+<div class="field-group">
+<div class="field"><label>Kp:</label><span class="global" id="global_Kp"></span><input type="number" id="draft_Kp" step="1"></div>
+<div class="field"><label>Ki:</label><span class="global" id="global_Ki"></span><input type="number" id="draft_Ki" step="0.01"></div>
+<div class="field"><label>Kd:</label><span class="global" id="global_Kd"></span><input type="number" id="draft_Kd" step="0.01"></div>
+<div class="field"><label>Int. Limit:</label><span class="global" id="global_IntegralLimit"></span><input type="number" id="draft_IntegralLimit" step="1"></div>
+</div>
+</div><hr>
+<h1 class="collapsible-header" data-section="current-pid">Current PID <span class="arrow">▼</span></h1>
+<div class="collapsible-section" id="current-pid">
+<div class="field-group">
+<div class="field"><label>Kp_I:</label><span class="global" id="global_Kp_I"></span><input type="number" id="draft_Kp_I" step="1"></div>
+<div class="field"><label>Ki_I:</label><span class="global" id="global_Ki_I"></span><input type="number" id="draft_Ki_I" step="0.01"></div>
+<div class="field"><label>Kd_I:</label><span class="global" id="global_Kd_I"></span><input type="number" id="draft_Kd_I" step="0.01"></div>
+<div class="field"><label>Int. Limit I:</label><span class="global" id="global_IntegralLimit_I"></span><input type="number" id="draft_IntegralLimit_I" step="1"></div>
+</div>
+</div><hr>
+<h1 class="collapsible-header" data-section="other-pid">Other PID Settings <span class="arrow">▼</span></h1>
+<div class="collapsible-section" id="other-pid">
+<div class="field-group">
+<div class="field"><label>Duty Min:</label><span class="global" id="global_DutyMin"></span><input type="number" id="draft_DutyMin" step="1"></div>
+<div class="field"><label>Duty Max:</label><span class="global" id="global_DutyMax"></span><input type="number" id="draft_DutyMax" step="1"></div>
+<div class="field"><label>Invert PWM:</label><span class="global" id="global_InvertPWM"></span><input type="checkbox" id="draft_InvertPWM"></div>
+<div class="field"><label>Debug Mode:</label><span class="global" id="global_DBG"></span><input type="number" id="draft_DBG" step="1" min="0" max="9"></div>
+</div>
+</div><hr>
+<h1 class="collapsible-header" data-section="limits">Limits <span class="arrow">▼</span></h1>
+<div class="collapsible-section" id="limits">
+<div class="field-group">
+<div class="field"><label>Vout Min:</label><span class="global" id="global_VoutMin"></span><input type="number" id="draft_VoutMin" step="0.1"></div>
+<div class="field"><label>Vout Max:</label><span class="global" id="global_VoutMax"></span><input type="number" id="draft_VoutMax" step="0.1"></div>
+<div class="field"><label>Ilimit Max:</label><span class="global" id="global_IlimitMax"></span><input type="number" id="draft_IlimitMax" step="0.1"></div>
+<div class="field"><label>Power Max:</label><span class="global" id="global_PowerMax"></span><input type="number" id="draft_PowerMax" step="0.1"></div>
+<div class="field"><label>Temp Max:</label><span class="global" id="global_TempMax"></span><input type="number" id="draft_TempMax" step="1"></div>
+<div class="field"><label>Temp. Hyst.:</label><span class="global" id="global_TempDiff"></span><input type="number" id="draft_TempDiff" step="0.1" min="0.1" max="10"></div>
+<div class="field"><label>Voltage Dev. V:</label><span class="global" id="global_VdevLimit"></span><input type="number" id="draft_VdevLimit" step="0.1" min="0" max="10"></div>
+<div class="field"><label>Current Dev. %:</label><span class="global" id="global_IdevLimit"></span><input type="number" id="draft_IdevLimit" step="1" min="0" max="100"></div>
+</div>
+</div>
+</div>
+<script src="mock-ws.js"></script>
+<script>
+let ws;
+let reconnectInterval = 1000;
+const maxReconnect = 30000;
+const pageName = "settings";
+let initialized = false;
+const fieldPrecision = {Kp: 2, Ki: 3, Kd: 3, IntegralLimit: 1, Kp_I: 2, Ki_I: 3, Kd_I: 3, IntegralLimit_I: 1, DutyMin: 1, DutyMax: 1, VoutMin: 1, VoutMax: 1, IlimitMax: 1, PowerMax: 1, TempMax: 1, TempDiff: 1, HUE: 0, VdevLimit: 1,IdevLimit: 1, DBG: 0};
+const fields = ['WiFiSSID','WiFiPass','HUE','WiFiEnabled','OTAEnabled','InvertPWM','Kp','Ki','Kd','IntegralLimit','DutyMin','Kp_I','Ki_I','Kd_I','IntegralLimit_I','DutyMax','VoutMin','VoutMax','IlimitMax','PowerMax','TempMax','TempDiff','VdevLimit','IdevLimit','DBG'];
+const expertFields = ['WiFiEnabled','OTAEnabled','InvertPWM','Kp','Ki','Kd','IntegralLimit','Kp_I','Ki_I','Kd_I','IntegralLimit_I','DutyMin','DutyMax','VoutMin','VoutMax','IlimitMax','PowerMax','TempMax','TempDiff','DBG'];
+const errorMap = ["Overheat","Overcurrent","Fuse Blown","Sensor Fail","INA226 Init Fail","WiFi Init Fail","SSD1306 Init Fail","PWM Init Fail","Vout Over Limit","Over Power","Voltage Deviation",
+  "Current Deviation","Power Over Limit","LEDC Init Fail","PID Divergence","Low Memory","High CPU Temp","Current PID Div"];
+let globals = {HUE: 85, TempDiff: 5.0};
+let hueTimeout;
+let errorLog = [];
+function connectWS() {ws = new WebSocket("ws://" + location.hostname + "/ws");ws.onopen = () => {reconnectInterval = 1000;sendOpen();errorLog = []};
+  ws.onclose = () => {setTimeout(connectWS, reconnectInterval);reconnectInterval = Math.min(reconnectInterval * 2, maxReconnect);};
+  ws.onerror = () => {ws.close();};
+  ws.onmessage = e => {const obj = JSON.parse(e.data);updateGlobals(obj);if ('ERR' in obj) updateErrorLog(obj.ERR);if (!initialized) {setDraftsFromGlobals();initialized = true;}updateApplyButton();};
+  setInterval(() => {if (ws && ws.readyState === WebSocket.OPEN) {sendOpen();}}, 5000);}
+function sendOpen() {if (ws && ws.readyState === WebSocket.OPEN) {ws.send(JSON.stringify({ page: pageName, action: "OPEN" }));}}
+function validateDraftValue(field, value) {
+  if(['Kp','Ki','Kd','IntegralLimit','Kp_I','Ki_I','Kd_I','IntegralLimit_I','DutyMin','DutyMax','VoutMin','VoutMax','IlimitMax','PowerMax','TempMax','TempDiff','HUE','VdevLimit','IdevLimit'].includes(field)) {
+  const num = parseFloat(value);if (isNaN(num)) return false;if (field === 'TempDiff') return num >= 0.1 && num <= 10;return true;}
+  if (field === 'DBG') {const num = parseInt(value);return !isNaN(num) && num >= 0 && num <= 9;}return true;}
+function updateGlobals(obj) {
+  fields.forEach(field => {
+  if (!(field in obj)) return;
+  globals[field] = obj[field];
+  const isBool = ['WiFiEnabled','OTAEnabled','InvertPWM'].includes(field);
+  const globalSpan = document.getElementById(`global_${field}`);
+  if (globalSpan) {
+  globalSpan.innerText = isBool ? (globals[field] ? 'Yes' : 'No') : (field in fieldPrecision ? Number(globals[field]).toFixed(fieldPrecision[field]) : globals[field]);}
+  if (field === 'HUE') {document.getElementById("draft_HUE").value = globals[field];if (!initialized) {document.getElementById("hueSlider").value = globals[field];
+  document.documentElement.style.setProperty('--h', globals[field]);}}});updateApplyButton();}
+function setDraftsFromGlobals() {
+  fields.forEach(field => {
+  const input = document.getElementById(`draft_${field}`);
+  if (!input) return;
+  if (['WiFiEnabled','OTAEnabled','InvertPWM'].includes(field)) input.checked = !!globals[field];
+  else if (['WiFiSSID','WiFiPass'].includes(field)) input.value = globals[field] || '';
+  else input.value = field in fieldPrecision ? Number(globals[field]).toFixed(fieldPrecision[field]) : globals[field] || '';});updateApplyButton();}
+function getDraftValue(field) {
+  const input = document.getElementById(`draft_${field}`);
+  if (['WiFiEnabled','OTAEnabled','InvertPWM'].includes(field)) return input.checked ? 1 : 0;if (field === 'DBG') return parseInt(input.value);
+  if (['Kp','Ki','Kd','IntegralLimit','Kp_I','Ki_I','Kd_I','IntegralLimit_I','DutyMin','DutyMax','VoutMin','VoutMax','IlimitMax','PowerMax','TempMax','TempDiff','HUE','VdevLimit','IdevLimit'].includes(field)) return parseFloat(input.value);
+  return input.value;}
+function updateGlobalDisplay(field) {const globalSpan = document.getElementById(`global_${field}`);
+  if (globalSpan) globalSpan.innerText = ['WiFiEnabled','OTAEnabled','InvertPWM'].includes(field) ? (globals[field] ? 'Yes' : 'No') : (field in fieldPrecision ? Number(globals[field]).toFixed(fieldPrecision[field]) : globals[field]);}
+function updateApplyButton() {
+  let hasChanges = false;
+  for (const field of fields) {
+  const dval = getDraftValue(field), gval = globals[field];
+  if (['WiFiEnabled','OTAEnabled','InvertPWM'].includes(field)) {
+  if (validateDraftValue(field, dval) && dval !== (gval ? 1 : 0)) { hasChanges = true; break; }} else if (field in fieldPrecision) {
+  if (validateDraftValue(field, dval) && Number(dval).toFixed(fieldPrecision[field]) !== Number(gval).toFixed(fieldPrecision[field])) { hasChanges = true; break; }
+  } else if (validateDraftValue(field, dval) && dval !== gval) { hasChanges = true; break; }}document.getElementById("btnApply").classList.toggle("active", hasChanges);}
+document.getElementById("btnApply").addEventListener("click", () => {
+  const changes = {};
+  fields.forEach(field => {
+  const dval = getDraftValue(field), gval = globals[field];
+  if (['WiFiEnabled','OTAEnabled','InvertPWM'].includes(field)) {
+  if (validateDraftValue(field, dval) && dval !== (gval ? 1 : 0)) changes[field] = dval;
+  } else if (field in fieldPrecision) {
+  if (validateDraftValue(field, dval) && Number(dval).toFixed(fieldPrecision[field]) !== Number(gval).toFixed(fieldPrecision[field])) changes[field] = Number(dval);
+  } else if (validateDraftValue(field, dval) && dval !== gval) changes[field] = dval;});
+  if (Object.keys(changes).length) {ws.send(JSON.stringify(changes));
+  Object.keys(changes).forEach(field => {globals[field] = changes[field];updateGlobalDisplay(field);});}updateApplyButton();});
+expertFields.forEach(field => {const input = document.getElementById(`draft_${field}`);if (input && field !== 'HUE') {input.addEventListener("change", () => {
+  if (document.getElementById("onlineMode").checked) {const value = getDraftValue(field);if (validateDraftValue(field, value)) {
+  ws.send(JSON.stringify({ [field]: value }));globals[field] = value;updateGlobalDisplay(field);}}updateApplyButton();});}});
+document.getElementById("toggleExpert").addEventListener("click", () => {const expertDiv = document.getElementById("expertSettings");
+  const btn = document.getElementById("toggleExpert");expertDiv.classList.toggle("hidden");btn.innerText = expertDiv.classList.contains("hidden") ? "Show Expert" : "Hide Expert";btn.classList.toggle("active", !expertDiv.classList.contains("hidden"));});
+document.getElementById("toggleErrors").addEventListener("click", () => {
+  const statusDiv = document.getElementById("statusSection");const btn = document.getElementById("toggleErrors");
+  if (statusDiv.classList.contains("visible")) {errorLog = [];statusDiv.classList.remove("visible");btn.innerText = "Show Errors";
+  btn.classList.remove("active");} else {statusDiv.classList.add("visible");btn.innerText = "Hide Errors";btn.classList.add("active");}updateErrorLog(0);});
+document.getElementById("hueSlider").addEventListener("input", () => {
+  const value = document.getElementById("hueSlider").value;
+  document.getElementById("draft_HUE").value = value;
+  document.documentElement.style.setProperty('--h', value);
+  clearTimeout(hueTimeout);
+  hueTimeout = setTimeout(() => {
+    const parsedValue = parseFloat(value);
+    if (validateDraftValue('HUE', parsedValue)) {
+      ws.send(JSON.stringify({ HUE: parsedValue }));globals['HUE'] = parsedValue;
+      document.getElementById("global_HUE").innerText = parsedValue;}updateApplyButton();}, 300);});
+document.querySelectorAll(".collapsible-header").forEach(header => {
+  header.addEventListener("click", () => {
+    const sectionId = header.getAttribute("data-section");
+    const section = document.getElementById(sectionId);
+    section.classList.toggle("collapsed");
+    header.classList.toggle("collapsed");});});
+function updateErrorLog(code) {for (let i = 0; i < errorMap.length; i++) {const isActive = (code >> i) & 1;
+    const existing = errorLog.find(entry => entry.bit === i);if (isActive && !existing) {errorLog.push({ bit: i, active: true });
+    } else if (existing && !isActive && existing.active) {existing.active = false;}}updateStatusDisplay();}
+function updateStatusDisplay() {const listDiv = document.getElementById("statusList");const statusDiv = document.getElementById("statusSection");
+  const toggleBtn = document.getElementById("toggleErrors");listDiv.innerHTML = "";const hasLoggedErrors = errorLog.length > 0;
+  const hasActiveErrors = errorLog.some(entry => entry.active);const statusClass = hasActiveErrors ? "status-error" : "status-normal";
+  if (!hasLoggedErrors) {listDiv.innerHTML = "<div class='no-status'>No errors</div>";} else {for (let i = 0; i < errorMap.length; i++) {const entry = errorLog.find(e => e.bit === i);
+  if (entry) {const className = entry.active ? "error-active" : "error-inactive";listDiv.innerHTML += `<div class="${className}">${errorMap[i]}</div>`;}}}listDiv.scrollTop = listDiv.scrollHeight;
+  statusDiv.classList.remove("status-error", "status-normal");listDiv.classList.remove("status-error", "status-normal");statusDiv.classList.add(statusClass);listDiv.classList.add(statusClass);
+  if (hasLoggedErrors && !statusDiv.classList.contains("visible")) {statusDiv.classList.add("visible");toggleBtn.innerText = "Hide Errors";toggleBtn.classList.add("active");}}
+connectWS();
+document.querySelectorAll('.collapsible-section, .collapsible-header').forEach(el => el.classList.add('collapsed'));
+</script>
+</body>
+</html>

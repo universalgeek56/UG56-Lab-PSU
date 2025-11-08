@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab PSU Info</title>
+<link rel="stylesheet" href="./style.css">
+<style>
+:root { transition: all 0.3s ease; }
+a { color: var(--c2, hsl(var(--h, 0), 80%, 50%)); text-decoration: none; }
+a:hover { text-decoration: underline; }
+ul { margin: 0.5em 0 0 1em; padding: 0; }
+li { margin: 0.3em 0; }
+.section { background: var(--b5); border-radius: .375em; padding: .8em 1em; box-shadow: var(--s1); margin: .5em 0; }
+</style>
+</head>
+<body>
+<h1>Lab PSU Info</h1>
+<div class="section">
+<h2>About</h2>
+<p>This is a UG56 Lab Power Supply Unit project.</p>
+<p>Version: 1.0.0</p>
+<hr>
+<h2>License</h2>
+<p>MIT License</p>
+<hr>
+<h2>Links</h2>
+<ul>
+  <li><a href="https://github.com/universalgeek56/UG56-Lab-PSU" target="_blank">GitHub Repository</a></li>
+  <li><a href="https://www.youtube.com/watch?v=VGuFOt4d0uA" target="_blank">YouTube Channel</a></li>
+  <li><a href="https://ko-fi.com/universalgeek56" target="_blank">Support on Ko-fi</a></li>
+</ul>
+<hr>
+<h2>Instructions</h2>
+<p>Use the main interface to control the Lab PSU and monitor voltage, current, power, and temperature.</p>
+<p>Expert mode unlocks advanced settings (PWM, PID, system limits).</p>
+</div>
+<script src="mock-ws.js"></script>
+<script>
+let ws = new WebSocket("ws://" + location.hostname + "/ws");
+const pageName = "system";
+let globals = {};
+ws.onopen = () => {console.log("WS connected");sendOpen();setInterval(sendOpen, 5000);};
+function sendOpen() {if (ws.readyState === WebSocket.OPEN) {ws.send(JSON.stringify({ page: pageName, action: "OPEN" }));}}
+ws.onmessage = (e) => {try {const obj = JSON.parse(e.data);console.log("Received from server:", obj);if ('HUE' in obj) {globals['HUE'] = parseFloat(obj['HUE']);
+  document.documentElement.style.setProperty('--h', globals['HUE']);}} catch (err) {console.warn("WS parse error:", err);}};
+ws.onclose = () => {console.log("WS closed");};
+ws.onerror = () => {console.log("WS error");};
+</script>
+</body>
+</html>
