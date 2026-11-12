@@ -87,7 +87,7 @@ In short: **1 transistor + 1 capacitor = full digital control.**
 **INA226** @ 0x40, Rsh = 0.0053 Ω
 **NTC** 10 kΩ @ 25 °C (Beta = 3470), Rseries = 3.3 kΩ
 
-![Assembled](images/Prototype.jpg)
+![Assembled](images/Prototype.JPG)
 ![Schematic](images/SCH_Lab_PSU.png)
 [Schematic on EasyEDA →](https://oshwlab.com/ug56/lab-psu)
 
